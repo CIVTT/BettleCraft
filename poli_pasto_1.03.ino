@@ -96,7 +96,7 @@ void read_actual() {
     valor_in = value;
   }
 }
-
+/************CONFIGURACION****************/
 void setup() {
   pinMode(btn_1, INPUT_PULLUP);
   pinMode(btn_2, INPUT_PULLUP);
