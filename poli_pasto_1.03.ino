@@ -67,6 +67,7 @@ void star() {
   if (modbus.writeSingleHoldingRegister(01, 8192, value)) {
     //Serial.println(F("ENCENDIDO"));
   }  //else processError();
+  delay(100);
   running = true;
   onoff="ON";
 }
@@ -77,6 +78,7 @@ void stop() {
   uint16_t value = 7;
   if (modbus.writeSingleHoldingRegister(01, 8192, value)) {
   }  // else processError();
+  delay(100);
   running = false;
   onoff="OFF";
 }
@@ -93,6 +95,7 @@ void frec_set() {
     SETFREC = value;
   }
   //else //processError();
+  delay(100);
 }
 
 void read_actual() {
@@ -114,7 +117,7 @@ void ini_sd(){
     } else {
       //Serial.println("Error creando el archivo data.csv");
     }
-  } else {//Serial.println("ya existe");
+  } else {//return;//Serial.println("ya existe");
   }
 }
 void setup() {
@@ -131,6 +134,8 @@ void setup() {
 if (!SD.begin(4)) {
     //Serial.println("initialization failed!");
     while (1);
+  }else{
+    //return;
   }
   
   ini_sd();
@@ -157,8 +162,6 @@ void loop() {
     switch (caracter) {
       case 'a':  //star
         running=false;
-        //lectura();
-        //star();
         On= true;
         //Serial.println("iniciando");  //star();
         break;
@@ -191,6 +194,7 @@ estado_1 = digitalRead(btn_1);
       pulsado_1=estado_1;
       delay(30);
       if (fin_1 > 2000) {
+        running=false;
         On= true;
         //Serial.println("encendido");
       }
@@ -218,6 +222,7 @@ estado_1 = digitalRead(btn_1);
       fin_2 = millis() - ini_2;
       delay(30);
       if (fin_2 > 2000) {
+        running=false;
         Off = true;
        // Serial.println("stop");
       }
@@ -311,6 +316,7 @@ void lectura() {
 void borrado() {
   //Serial.println("Removiendo data.csv...");
   SD.remove("data.txt");
+  ini_sd();
  // Serial.println("Removido data.csv");
 }
 
@@ -325,6 +331,12 @@ void sd_card() {
  my_File = SD.open("data.txt", FILE_WRITE);  //abrimos  el archivo
   //Serial.println("escribiendo data... ");
   if (my_File) {
+   /* my_File.print(cont);
+    my_File.print(";");
+    my_File.print(rpm);
+    my_File.print(";");
+    my_File.print(vel);*/
+    //my_File.print(":");
     my_File.println(dat_1);
     //Serial.println("Escribiendo SD: ");
     //delay(10);
