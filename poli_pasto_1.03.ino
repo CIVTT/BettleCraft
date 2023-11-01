@@ -1,52 +1,51 @@
-#include <SoftwareSerial.h>
 #include <ModbusRTUMaster.h>
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
+#include <SoftwareSerial.h>
 #include <SPI.h>
 #include <SD.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 #define alpha 0.2  //Alpha
 #define pi 3.1416
-//pines usados
-const int sensorPin = A0;
-const uint8_t rxPin = 9;
-const uint8_t txPin = 10;
-const uint8_t dePin = 5;
-const uint8_t btn_1 = 2;
-const uint8_t btn_2 = 3;
+#define rxPin 9
+#define txPin 10
+#define dePin 5
+#define btn_1 2
+#define btn_2 3
+#define sensorPin A0
 //variables usadas
 uint16_t frecc[] = { 0, 598, 665, 733, 800, 868, 935, 1003, 1070, 1138, 1205, 1273 };
 int i = 0;
+int cont=0;
 int adc_filtrado = 0;
 int adc_raw = 0;
-int cont=0;
-//int seg = 0;
-uint16_t SETFREC = 0;
-float valor_galga = 0;
-int valor_in = 0;
-float vel = 0;
-float rpm = 0;
-//unsigned long even_time = 0;
-//const unsigned long Time_d = 1000UL;  //
-//variables no numericas
 int pulsado_1 = HIGH;
 int pulsado_2 = HIGH;
 int estado_1 = HIGH;
 int estado_2 = HIGH;
-//unsigned long timeer;
+//int seg = 0;
 unsigned long ini_1;
 unsigned long ini_2;
 unsigned long fin_1;
 unsigned long fin_2;
 //unsigned long duracion;
-File my_File;
-char estado = "OFF";
-boolean running = false;
 char caracter;
-//variables de librerias
-SoftwareSerial mySerial(rxPin, txPin);
-ModbusRTUMaster modbus(mySerial, dePin);
-LiquidCrystal_I2C lcd_1(0x27, 20, 4);
+uint16_t SETFREC = 0;
 String dat_1="";
+boolean running = false;
+SoftwareSerial puerta(rxPin, txPin);
+ModbusRTUMaster modbus(puerta, dePin);
+LiquidCrystal_I2C lcd_1(0x3f, 20, 4);
+float valor_galga = 0;
+int valor_in = 0;
+float vel = 0;
+float rpm = 0;
+File my_File;
+String onoff = "OFF";
+//variables de librerias
+boolean On=false;
+boolean Off=false;
+/*int cont_1;
+int cont_2;*/
 /*
 void processError() {
   if (modbus.getTimeoutFlag()) {
@@ -69,6 +68,7 @@ void star() {
     //Serial.println(F("ENCENDIDO"));
   }  //else processError();
   running = true;
+  onoff="ON";
 }
 void stop() {
   //Serial.println(F("parando..."));
@@ -78,6 +78,7 @@ void stop() {
   if (modbus.writeSingleHoldingRegister(01, 8192, value)) {
   }  // else processError();
   running = false;
+  onoff="OFF";
 }
 void frec_in(uint16_t value) {
   //uint16_t value = selectValue(0, 5000);
@@ -100,22 +101,8 @@ void read_actual() {
     valor_in = value;
   }
 }
-
-void setup() {
-  pinMode(btn_1, INPUT_PULLUP);
-  pinMode(btn_2, INPUT_PULLUP);
-  Serial.begin(9600);
-  Serial.setTimeout(100);
-  while (!Serial) { ; }
-  // library data rs 485 and modbus vdf
-  modbus.begin(9600);  // modbus baud rate, config (optional)
-    //read_actual();
-  // Creando en la SD un csv
-
-  if (!SD.begin(4)) {
-    //Serial.println("initialization failed!");
-    while (1);
-  }
+void ini_sd(){
+  
   Serial.println("SD inicializada.");
   if (!SD.exists("data.txt")) {
     //Serial.println("sd inicializada");
@@ -127,11 +114,27 @@ void setup() {
     } else {
       //Serial.println("Error creando el archivo data.csv");
     }
-  } else {
-    //Serial.println("ya existe");
+  } else {//Serial.println("ya existe");
   }
-  //read_actual();
+}
+void setup() {
+  pinMode(btn_1, INPUT_PULLUP);
+  pinMode(btn_2, INPUT_PULLUP);
+  Serial.begin(9600);
+  Serial.setTimeout(100);
+  //while (!Serial) { ; }
+  // library data rs 485 and modbus vdf
+  modbus.begin(9600);  // modbus baud rate, config (optional)
+  delay(1000); 
   //ETCG Notes - Start LCD
+ // ini_sd();
+if (!SD.begin(4)) {
+    //Serial.println("initialization failed!");
+    while (1);
+  }
+  
+  ini_sd();
+
   lcd_1.init();
   lcd_1.backlight();
   lcd_1.clear();
@@ -143,26 +146,27 @@ void setup() {
   lcd_1.print("------UCSP------");
   lcd_1.setCursor(0, 1);
   lcd_1.print("PROYEC POLIPASTO");
+  delay(1000);
 }
+
 void loop() {
-  //int cont;
- // unsigned long cont_1;
- // unsigned long cont_2;
+  calculate();
+  display();
   if (Serial.available()) {
     caracter = Serial.read();
     switch (caracter) {
       case 'a':  //star
         running=false;
         //lectura();
-        star();
-
+        //star();
+        On= true;
         //Serial.println("iniciando");  //star();
         break;
       case 'b':  //stop
         running=false;
         //borrado();
-
-        stop();
+        Off = true;
+        //stop();
         //Serial.println("stop");
         break;
         //default: break;
@@ -174,7 +178,6 @@ void loop() {
       break;
     }
   }
-
 
 estado_1 = digitalRead(btn_1);
   if (estado_1 != pulsado_1) {
@@ -188,15 +191,12 @@ estado_1 = digitalRead(btn_1);
       pulsado_1=estado_1;
       delay(30);
       if (fin_1 > 2000) {
-        star();
-        //running = true;
+        On= true;
         //Serial.println("encendido");
       }
       if (fin_1 > 60 && fin_1 < 500) {
-        frec_in(frecc[i]);
-        //Serial.print("frec:");
-        //Serial.println(frecc[i]);
         i++;
+        frec_in(frecc[i]);
         if (i > 11) {
           i = 0;
         }
@@ -204,9 +204,8 @@ estado_1 = digitalRead(btn_1);
       pulsado_1 = estado_1;
     }
   }
-  
   //boton menos y stop
-  estado_2 = digitalRead(btn_2);
+   estado_2 = digitalRead(btn_2);
   if (estado_2 != pulsado_2) {
     //cont=0;
     if (estado_2 == LOW && pulsado_2 == HIGH) {
@@ -219,16 +218,12 @@ estado_1 = digitalRead(btn_1);
       fin_2 = millis() - ini_2;
       delay(30);
       if (fin_2 > 2000) {
-        stop();
-       //running = false;
+        Off = true;
        // Serial.println("stop");
       }
       if (fin_2 > 60 && fin_2 < 500) {
-        //Serial.print("frec:");
-        //Serial.println(frecc[i]);
-        frec_in(frecc[i]);
-        //Serial.println(frecc[i]);
         i--;
+        frec_in(frecc[i]);
         if (i < 0) {
           i = 11;
         }
@@ -236,8 +231,29 @@ estado_1 = digitalRead(btn_1);
       pulsado_2 = estado_2;
     }
   }
-calculate();
-  
+
+
+  if (running) {
+    cont=cont+1;
+    while (millis() % 1000 != 0) {}
+    //delay(800);
+    sd_card();
+  } else {
+    cont=0;
+  }
+  if(On){
+star();
+On = false;
+//Serial.println("1");
+}
+if(Off){
+stop();
+Off=false;
+//Serial.println("2");
+}
+
+}
+void display(){
   lcd_1.clear();
   lcd_1.setCursor(0, 0);
   lcd_1.print("RPM:");
@@ -255,29 +271,18 @@ calculate();
   lcd_1.setCursor(9, 1);
   lcd_1.print("PWR:");
   lcd_1.setCursor(13, 1);
-  lcd_1.print(estado);
-  if (running) {
-    cont=cont+1;
-    while (millis() % 1000 != 0) {}
-    //delay(1000);
-    //cont++;
-    //seg=cont+1;
-    sd_card();
-  } else {
-    cont=0;
-    //my_File.close();
-  }
+  lcd_1.print(onoff);
+  delay(100);
 }
-
 void calculate() {
   //velocidad en mm/s
   SETFREC = frecc[i] / 100;
   //SETFREC = SETFREC / 100; //posible cambio si falla por interferencia en variador y serial, comentar y descomenrtar anterior linea
   rpm = (SETFREC * 0.741) - 1.43;
-  if (rpm <= 0) {
+  if (rpm <0) {
     rpm = 0;
     vel = 0;
-  } 
+  } else
   if(rpm>0) {
     vel = rpm * pi * 80 / 30;
   }
@@ -291,7 +296,7 @@ void calculate() {
 void lectura() {
   //Serial.println("leendo..");
 
-  my_File = SD.open("data.txt", FILE_WRITE);
+  my_File = SD.open("data.txt");
   if (my_File) {
     
     while (my_File.available()) {
@@ -310,18 +315,16 @@ void borrado() {
 }
 
 void sd_card() {
-   /**/
+  /*if (!SD.begin(4)) {
+    //Serial.println("initialization failed!");
+    while (1);
+  }*/
+   
 //dat_1=String(cont)+";"+String(rpm)+";"+String(vel)+";"+String(valor_galga);
   if (SD.exists("data.txt")) {
  my_File = SD.open("data.txt", FILE_WRITE);  //abrimos  el archivo
   //Serial.println("escribiendo data... ");
   if (my_File) {
-   /* my_File.print(cont);
-    my_File.print(";");
-    my_File.print(rpm);
-    my_File.print(";");
-    my_File.print(vel);*/
-    my_File.print(":");
     my_File.println(dat_1);
     //Serial.println("Escribiendo SD: ");
     //delay(10);
