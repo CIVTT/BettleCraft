@@ -44,6 +44,7 @@ String onoff = "OFF";
 //variables de librerias
 boolean On=false;
 boolean Off=false;
+boolean send=false;
 /*int cont_1;
 int cont_2;*/
 /*
@@ -179,6 +180,22 @@ void loop() {
       case 'd':
       borrado();
       break;
+
+      case '+':
+      i++;
+        send=true;
+        //Serial.println(frecc[i]/100);
+        if (i > 11) {
+          i = 0;
+        }
+      break;
+      case '-':
+      i--;
+        send=true;
+        if (i < 0) {
+          i = 11;
+        }
+      break;
     }
   }
 
@@ -245,6 +262,10 @@ estado_1 = digitalRead(btn_1);
     sd_card();
   } else {
     cont=0;
+  }
+  if(send){
+    frec_in(frecc[i]);
+    send=false;
   }
   if(On){
 star();
