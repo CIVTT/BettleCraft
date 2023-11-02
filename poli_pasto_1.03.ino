@@ -6,9 +6,9 @@
 #include <LiquidCrystal_I2C.h>
 #define alpha 0.2  //Alpha
 #define pi 3.1416
-#define rxPin 9
-#define txPin 10
-#define dePin 5
+#define rxPin 8
+#define txPin 9
+#define dePin 7
 #define btn_1 2
 #define btn_2 3
 #define sensorPin A0
@@ -302,7 +302,7 @@ void display(){
 }
 void calculate() {
   //velocidad en mm/s
-  SETFREC = frecc[i] / 100;
+  //SETFREC = frecc[i] / 100;
   //SETFREC = SETFREC / 100; //posible cambio si falla por interferencia en variador y serial, comentar y descomenrtar anterior linea
   rpm = (SETFREC * 0.741) - 1.43;
   if (rpm <0) {
