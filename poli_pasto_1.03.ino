@@ -6,9 +6,9 @@
 #include <LiquidCrystal_I2C.h>
 #define alpha 0.2  //Alpha
 #define pi 3.1416
-#define rxPin 9
-#define txPin 10
-#define dePin 5
+#define rxPin 8
+#define txPin 9
+#define dePin 7
 #define btn_1 2
 #define btn_2 3
 #define sensorPin A0
@@ -22,14 +22,15 @@ int pulsado_2 = HIGH;
 int estado_1 = HIGH;
 int estado_2 = HIGH;
 unsigned long fin_1, ini_1, ini_2, fin_2;
-//unsigned long duracion;
+const unsigned long periodo=1000;
+unsigned long perante=0;
 char caracter;
 float SETFREC = 0;
 String dat_1 = "";
 boolean running = false;
 SoftwareSerial puerta(rxPin, txPin);
 ModbusRTUMaster modbus(puerta, dePin);
-LiquidCrystal_I2C lcd_1(0x3f, 20, 4);
+LiquidCrystal_I2C lcd_1(0x27, 20, 4);
 float valor_galga = 0;
 int valor_in = 0;
 float vel = 0;
@@ -142,12 +143,12 @@ void loop() {
       case '+':
         con_fre=con_fre+1;
         if(con_fre>11) con_fre=0;
-        envio((uint16_t)con_fre);
+        envio((uint16_t)frecc[con_fre]);
         break;
       case '-':
         con_fre=con_fre-1;
         if(con_fre<0) con_fre=11;
-        envio((uint16_t)con_fre);
+        envio((uint16_t)frecc[con_fre]);
         break;
     }
   }
@@ -169,7 +170,7 @@ void loop() {
       if (fin_1 > 60 && fin_1 < 500) { 
         con_fre=con_fre+1;
         if(con_fre>11) con_fre=0;
-        envio((uint16_t)con_fre);
+        envio((uint16_t)frecc[con_fre]);
       }
       pulsado_1 = estado_1;
     }
@@ -194,18 +195,20 @@ void loop() {
       if (fin_2 > 60 && fin_2 < 500) {
         con_fre=con_fre-1;
         if(con_fre<0) con_fre=11;
-        envio((uint16_t)con_fre);
+        envio((uint16_t)frecc[con_fre]);
       }
       pulsado_2 = estado_2;
     }
   }
 
   if (running) {
+    unsigned long peri_act=millis();
+    if(peri_act-perante>=periodo){
     cont = cont + 1;
-    while (millis() % 1000 != 0) {}
-    //delay(1000);
-
+    //while (millis() % 1000 != 0) {}
     sd_card();
+    perante=peri_act;
+    }
   } else {
     cont = 0;
     //my_File.close();
