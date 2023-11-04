@@ -11,7 +11,7 @@
 #define dePin 7
 #define btn_1 2
 #define btn_2 3
-#define sensorPin A0
+const int sensorPin= A0;
 int frecc[12] = { 0, 598, 665, 733, 800, 868, 935, 1003, 1070, 1138, 1205, 1273 };
 int con_fre = 0;
 int cont = 0;
@@ -125,18 +125,18 @@ void loop() {
   if (Serial.available()) {
     caracter = Serial.read();
     switch (caracter) {
-      case 'a':  //star
+      case 'A':  //star
         running = false;
         star();
         break;
-      case 'b':  //stop
+      case 'B':  //stop
         running = false;
         stop();
         break;
-      case 'c':
+      case 'C':
         lectura();
         break;
-      case 'd':
+      case 'D':
         borrado();
         break;
 
