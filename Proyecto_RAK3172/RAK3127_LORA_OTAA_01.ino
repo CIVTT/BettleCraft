@@ -1,5 +1,5 @@
 /**********LIBRERIAS**********/
-
+#include <math.h>
 /**********PINOUTs************/
 #define pin_temperatura     PA10
 #define pin_bateria         PA11
@@ -16,7 +16,10 @@
 #define numero_e            2.71828182
 #define constante_betha     3977
 #define DEBUG 0
-
+float R2 = 98790;      //Valor medido de R2, no exactamente 10K, cambialo por el valor que uses tu.
+float A = -14.05920035E-3; //¡¡¡Datos calculados para un caso concreto...
+float B = 21.56699139E-4;  //...debes cambiarlos por los que calcules tu...
+float C = -48.50532932E-7;  //...de tu propio termistor NTC!!!
 /** Packet buffer for sending */
 uint8_t collected_data[64] = { 0 };
 
@@ -126,9 +129,14 @@ void setup(){
 }
 
 void uplink_routine(){
-    int valor_temperatura = analogRead(pin_temperatura);
-    float temperatura_escalada=valor_temperatura/10;
-    String temp_string=String(temperatura_escalada);
+    //int valor_temperatura = analogRead(pin_temperatura);
+    //float temperatura_escalada=valor_temperatura/10;
+    float temp_1;
+    temp_1 = termistor(analogRead(pin_temperatura));    
+    String temp_string=String(temp_1);
+    Serial.print("Temperatura: ");
+
+    Serial.println(temp_1,1);       
     uint8_t data_len = 0;
     for(int i=0;i<temp_string.length();i++){
       data_len++;
@@ -160,7 +168,7 @@ void uplink_routine(){
 void loop(){
     static uint64_t last = 0;
     static uint64_t elapsed;
-    analogReadResolution(12);
+       
     if((elapsed = millis() - last) > OTAA_PERIOD) {
         uplink_routine();
         last = millis();
@@ -171,8 +179,20 @@ void loop(){
 }
 
 /**********SECUENCIAS SECUNDARIAS**********/
-float calcularTemperatura(float resistenciaTermistor) {
-  float Temperatura;
-  Temperatura = constante_betha/log(resistenciaTermistor / (resistencia_25*pow(numero_e,(-constante_betha/temperatura_25))));
-  return Temperatura - 273.15;  // Convierte a grados Celsius
+float termistor(int RawADC) {
+  
+  long resistencia;  
+  
+  float temp;
+
+  resistencia = R2*((1024.0 / RawADC) - 1); //Calculamos R1 mediante la lectura analogica
+  
+  temp = log(resistencia);
+  
+  temp = 1 / (A + (B * temp) + (C * temp * temp * temp));
+  
+  temp = temp - 273.15;  // Kelvin a grados centigrados                      
+
+  return temp;
+  
 }
