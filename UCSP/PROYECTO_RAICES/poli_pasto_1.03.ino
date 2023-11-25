@@ -104,7 +104,7 @@ void setup() {
   pinMode(btn_2, INPUT_PULLUP);
   Serial.begin(9600);
   Serial.setTimeout(100);
-  while (!Serial) { ; }
+  //while (!Serial) { ; }
   // library data rs 485 and modbus vdf
   modbus.begin(9600);  // modbus baud rate, config (optional)
   //read_actual();
@@ -116,8 +116,8 @@ void setup() {
     lcd_1.setCursor(0, 0);
     lcd_1.print("NO SD");
     //delay(500);
-    while (1)
-      ;
+    /*while (1)
+      ;*/
   }
   ini_sd();
   //ETCG Notes - Start LCD
@@ -224,6 +224,7 @@ if(peri_act - perante >= periodo){
   display();
   
   if (running == HIGH){//valor_galga > 1 && running == HIGH) {
+    
     sd_card();
     cont = cont + 1;
     if (valor_galga > 1 && toma==HIGH){
@@ -278,19 +279,18 @@ void calculate() {
   if(vel<0){
     vel=0;
   }
-  
   //peso
   adc_raw = analogRead(sensorPin);
   adc_filtrado = (alpha * adc_raw) + ((1 - alpha) * adc_filtrado);
   valor_galga = (500 * adc_filtrado) / 1023;
-DL=T_DL*vel;
+  DL=T_DL*vel;
   
   //dat_1 = String(cont) + ";" + String(rpm, 2) + ";" + String(vel, 2) + ";" + String(valor_galga, 2);
 }
 
 void lectura() {
   //Serial.println("leendo..");
-
+if (SD.begin()) {
   my_File = SD.open("data.txt");  //, FILE_WRITE);
   if (my_File) {
 
@@ -302,18 +302,21 @@ void lectura() {
   } else {
     //Serial.println("Error al abrir el archivo");
   }
-}
+}}
 void borrado() {
   //Serial.println("Removiendo data.csv...");
+ if (SD.begin()) {
   SD.remove("data.txt");
   ini_sd();
-  
+ }
   // Serial.println("Removido data.csv");
 }
 
 void sd_card() {
   //Serial.println("escribiendo data... ");
   //dat_1=String(cont)+";"+String(rpm)+";"+String(vel)+";"+String(valor_galga);
+  if (SD.begin()) {
+      
   if (SD.exists("data.txt")) {
     my_File = SD.open("data.txt", FILE_WRITE);  //abrimos  el archivo
     //Serial.println("escribiendo data... ");
@@ -338,4 +341,4 @@ void sd_card() {
       //Serial.println("error al abrir archivo...");
     }
   }
-}
+}}
