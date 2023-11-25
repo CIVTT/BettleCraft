@@ -273,11 +273,12 @@ void calculate() {
   /*if (rpm > 0) {
     vel = rpm * pi * 135 / 60;
   }*/
-  DL=T_DL;//*vel;
+  
   vel=((float(variador_frec)/100)*0.741 - 1.43) *pi*135/60;
   if(vel<0){
     vel=0;
   }
+  DL=T_DL*vel;
   //peso
   adc_raw = analogRead(sensorPin);
   adc_filtrado = (alpha * adc_raw) + ((1 - alpha) * adc_filtrado);
