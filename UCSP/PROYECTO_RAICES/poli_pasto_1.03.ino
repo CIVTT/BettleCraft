@@ -12,7 +12,7 @@
 #define btn_1 2
 #define btn_2 3
 const int sensorPin= A0;
-int frecc[12] = { 0, 598, 665, 733, 800, 868, 935, 1003, 1070, 1138, 1205, 1273 };
+int frecc[10] = { 0, 598, 665, 733, 800, 868, 935, 1003, 1070, 1138};//,1205, 1273 };
 int con_fre = 0;
 int cont = 0;
 int adc_filtrado = 0;
@@ -29,6 +29,9 @@ float SETFREC = 0;
 float DL=0;
 String dat_1 = "";
 int running = LOW;
+int toma = HIGH;
+int temp_act = 0;
+int T_DL=0;
 SoftwareSerial puerta(rxPin, txPin);
 ModbusRTUMaster modbus(puerta, dePin);
 LiquidCrystal_I2C lcd_1(0x27, 20, 4);
@@ -46,6 +49,7 @@ void star() {
   uint16_t value = 1;
   if (modbus.writeSingleHoldingRegister(01, 8192, value)) {
     //Serial.println(F("ENCENDIDO"));
+  
   }  //else processError();
   running = HIGH;
   onoff = "ON";
@@ -148,16 +152,19 @@ void loop() {
         break;
       case 'D':
         borrado();
+        toma=HIGH;
+        temp_act=0;
+        T_DL=0;
         break;
 
       case '+':
         con_fre=con_fre+1;
-        if(con_fre>11) con_fre=0;
+        if(con_fre>9) con_fre=0;
         envio((uint16_t)frecc[con_fre]);
         break;
       case '-':
         con_fre=con_fre-1;
-        if(con_fre<0) con_fre=11;
+        if(con_fre<0) con_fre=9;
         envio((uint16_t)frecc[con_fre]);
         break;
     }
@@ -179,7 +186,7 @@ void loop() {
       }
       if (fin_1 > 60 && fin_1 < 500) { 
         con_fre=con_fre+1;
-        if(con_fre>11) con_fre=0;
+        if(con_fre>9) con_fre=0;
         envio((uint16_t)frecc[con_fre]);
       }
       pulsado_1 = estado_1;
@@ -204,23 +211,33 @@ void loop() {
       }
       if (fin_2 > 60 && fin_2 < 500) {
         con_fre=con_fre-1;
-        if(con_fre<0) con_fre=11;
+        if(con_fre<0) con_fre=9;
         envio((uint16_t)frecc[con_fre]);
       }
       pulsado_2 = estado_2;
     }
   }
 calculate();
+frec_var();
 unsigned long peri_act=millis();
-if(peri_act-perante >= periodo){
-  
+if(peri_act - perante >= periodo){
   display();
-  frec_var();
   
-  if (valor_galga > 1 && running == HIGH) {
-    
+  if (running == HIGH){//valor_galga > 1 && running == HIGH) {
     sd_card();
     cont = cont + 1;
+    if (valor_galga > 1 && toma==HIGH){
+    temp_act=cont;
+    toma=LOW;
+    }
+    if(temp_act>0){
+      T_DL=(cont - temp_act);
+    }//else {T_DL=0;}
+    //T_DL=(cont - temp_act);
+   /* if (valor_galga > 1){// && running == HIGH){
+      T_DL=(cont - temp_act);
+    }else {}//temp_act= temp_act+1;}
+*/
     } else {cont = 0;}
   perante=peri_act;
 }}
@@ -256,6 +273,7 @@ void calculate() {
   /*if (rpm > 0) {
     vel = rpm * pi * 135 / 60;
   }*/
+  DL=T_DL;//*vel;
   vel=((float(variador_frec)/100)*0.741 - 1.43) *pi*135/60;
   if(vel<0){
     vel=0;
@@ -264,7 +282,8 @@ void calculate() {
   adc_raw = analogRead(sensorPin);
   adc_filtrado = (alpha * adc_raw) + ((1 - alpha) * adc_filtrado);
   valor_galga = (500 * adc_filtrado) / 1023;
-  DL=cont*vel;
+
+  
   //dat_1 = String(cont) + ";" + String(rpm, 2) + ";" + String(vel, 2) + ";" + String(valor_galga, 2);
 }
 
@@ -287,6 +306,7 @@ void borrado() {
   //Serial.println("Removiendo data.csv...");
   SD.remove("data.txt");
   ini_sd();
+  
   // Serial.println("Removido data.csv");
 }
 
@@ -297,7 +317,7 @@ void sd_card() {
     my_File = SD.open("data.txt", FILE_WRITE);  //abrimos  el archivo
     //Serial.println("escribiendo data... ");
     if (my_File) {
-
+    //my_File.print(";");
     my_File.print(cont);
     my_File.print(";");
     my_File.print(rpm);
