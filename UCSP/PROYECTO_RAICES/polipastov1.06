@@ -76,7 +76,7 @@ void envio(uint16_t value) {
   }
   //else processError();
 }
-
+/*/*****lectura variador
 void frec_var() {
   uint16_t value = 0;
   //long val_1;
@@ -87,7 +87,7 @@ void frec_var() {
   //else //processError();
   //return val;
   
-}
+}*///**************************
 void ini_sd() {
 
   Serial.println("SD inicializada.");
@@ -143,24 +143,16 @@ void setup() {
 }
 void loop() {
   
-calculate();
-
-
-if (enc_act == HIGH){
-Wire.beginTransmission(0x20);
-Wire.write('S');
-Wire.endTransmission();
-enc_act = LOW;
-}
-    encoder_trans();
+    calculate();
+    display();
+    //************** Time--1seg ***************
 unsigned long peri_act=millis();
 if(peri_act - perante >= periodo){
- frec_var();
- 
+// frec_var();
   
   if (running == HIGH){//valor_galga > 1 && running == HIGH) {
-display();
     sd_card();
+    
     cont = cont + 1;
     if (valor_galga > 1 && toma==HIGH){
     temp_act=cont;
@@ -177,7 +169,16 @@ display();
     } else {cont = 0;}
   perante=peri_act;
 }
-  //********
+//****************COMUNICACION I2C****************
+if (enc_act == HIGH){
+Wire.beginTransmission(0x20);
+Wire.write('S');
+Wire.endTransmission();
+enc_act = LOW;
+}
+    encoder_trans();
+
+  //*****************
   if (Serial.available()) {
     caracter = Serial.read();
     switch (caracter) {
@@ -339,7 +340,7 @@ void calculate() {
   }
   vel=*/
   //peso
-  vel = vel * pi * 135 / 60;
+  vel = vel ;//* pi * 76 / 60;
   adc_raw = analogRead(sensorPin);
   adc_filtrado = (alpha * adc_raw) + ((1 - alpha) * adc_filtrado);
   valor_galga = (500 * adc_filtrado) / 1023;
@@ -392,10 +393,11 @@ void sd_card() {
     my_File.print(";");
     my_File.println(DL);
     // my_File.println(dat_1);
-      //Serial.println("Escribiendo SD: ");
+      
       //delay(10);
       my_File.close();  //cerramos el archivo
       //delay(10);
+      //Serial.println("Escribiendo SD: ");
     } else {
       //estado = "OFF";
       Serial.println("error al abrir archivo...");
