@@ -1,0 +1,239 @@
+#include <Wire.h>
+#include <ModbusRTUMaster.h>
+#define i2c_addr  0x20
+#define Tsample   100
+#define constante_distancia 350
+#define dePin 4
+int con_fre = 0;
+ModbusRTUMaster modbus(Serial, dePin);
+int frecc[10] = { 0, 598, 665, 733, 800, 868, 935, 1003, 1070, 1138};//,1205, 1273 };
+//char payload[8];
+char vel[4];
+char dis[4];
+int VV=LOW;
+int DD=LOW;
+long counter = 0;  //This variable will increase or decrease depending on the rotation of encoder
+float counter_now, counter_last;
+unsigned long Tnow, Tlast;
+float distancia;
+float rev_seg; //2pi=rev---->2000p
+
+int run_A=LOW;
+int run_B=LOW;
+int run_plus=LOW;
+int run_minus=LOW;
+int run_send=LOW;
+void setup() {
+  //Serial.setTimeout(100);
+  
+  modbus.begin (9600);
+  modbus.setTimeout(100);
+  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(2, INPUT);           // set pin to input
+  pinMode(3, INPUT);           // set pin to input
+  digitalWrite(2, HIGH);       // turn on pullup resistors
+  digitalWrite(3, HIGH);       // turn on pullup resistors
+  attachInterrupt(0, ai0, RISING);
+  attachInterrupt(1, ai1, RISING);
+  Wire.begin(0x20);
+  Wire.onReceive(receiveEvent);
+  Wire.onRequest(requestEvent);
+  
+}
+
+
+void loop() {
+
+  Tnow=millis();
+  if(Tnow-Tlast>=Tsample){
+    counter_now=counter;
+    distancia=counter/constante_distancia;
+    rev_seg=((counter_now-counter_last)/2000.0)*10.0;//-counter_last
+    //rev_seg= 
+  /*  Serial.print(distancia);
+  Serial.print("::");
+  Serial.print(rev_seg);
+  Serial.print("::");
+  Serial.print(counter_now);
+  Serial.print("::");
+  Serial.println(counter_last);*/
+    counter_last=counter_now;
+    Tlast=Tnow;
+    
+  }
+   //Serial.flush(); 
+ // dis=vall1.byteformat2;
+/*for(int i = 0; i < 4; i++){
+  payload[i]=vall.byteformat[i];
+}
+ for(int j = 4; j < 9; j++){
+  payload[j]=vall1.byteformat2[j];
+} 
+if(run_A==HIGH){
+  digitalWrite(LED_BUILTIN, HIGH);
+}
+if(run_A==LOW){
+  digitalWrite(LED_BUILTIN, LOW);
+}*/
+  if (run_A==HIGH){
+    
+    uint16_t value_1 = 1;
+    
+  if(modbus.writeSingleHoldingRegister(01, 8192, value_1)){}
+  run_A=LOW;
+
+  }
+  if (run_B==HIGH){
+    
+    uint16_t value_2 = 7;
+  if(modbus.writeSingleHoldingRegister(01, 8192, value_2)){}
+  run_B=LOW;
+  }
+  if (run_plus==HIGH){
+    //digitalWrite(LED_BUILTIN, HIGH);
+    con_fre=con_fre+1;
+    if(con_fre>9) con_fre=0;
+    uint16_t val_1 = (uint16_t)frecc[con_fre];
+    if(modbus.writeSingleHoldingRegister(01, 8193, val_1)){}
+    run_plus=LOW;
+  }
+if (run_minus==HIGH){
+   // digitalWrite(LED_BUILTIN, LOW);
+    con_fre=con_fre-1;
+    if(con_fre<0) con_fre=9;
+    uint16_t val_2 = (uint16_t)frecc[con_fre];
+    if(modbus.writeSingleHoldingRegister(01, 8193, val_2)){}
+  run_minus=LOW;
+  
+  }
+}
+
+
+void ai0() {
+  if(digitalRead(3)==LOW) {
+    counter++;
+  }else{
+    counter--;
+  }
+}
+
+void ai1() {
+  // ai0 is activated if DigitalPin nr 3 is going from LOW to HIGH
+  // Check with pin 2 to determine the direction
+  if(digitalRead(2)==LOW) {
+    counter--;
+  }else{
+    counter++;
+  }
+}
+
+void receiveEvent(){
+  if(Wire.available()){
+    char vaa=Wire.read();
+    /*char *llee=Wire.read();
+    char vaa=llee.substring(0,1);
+    char vee=llee.substring(1);*/
+    switch (vaa){ 
+    case 'V':
+    VV=HIGH;
+    break;
+    case 'H':
+    DD=HIGH;
+    break;
+    case 'A':  //star
+    run_A=HIGH;
+    counter=0;
+    counter_last=0;
+    break;
+    case 'B':  //stop
+    run_B=HIGH;
+    break;
+    case '+':
+    //con_fre=String(vee).toInt();
+    run_plus=HIGH;
+    break;
+    case '-':
+    //con_fre=String(vee).toInt();
+    run_minus=HIGH;
+    break;
+  }
+  }
+}
+
+void requestEvent(){
+   if(VV==HIGH){
+   union Bytefloat{
+    char byteformat[4];
+    float floatformat;
+  }vall;
+  vall.floatformat=rev_seg;
+  //vel=vall.byteformat;
+  Wire.write(vall.byteformat,4);
+  VV=LOW;
+   }
+   if(DD==HIGH){
+    union Bytedis{
+    char byteformat2[4];
+    float floatformat2;
+  }vall1;
+  vall1.floatformat2=distancia;
+  Wire.write(vall1.byteformat2,4);
+   DD=LOW;
+
+   }
+ /* for (int i = 0; i < payload.length(); i++) {
+    Wire.write(payload.charAt(i));
+  }*/
+
+
+
+
+}
+/*
+//********************
+void star() {
+  //Serial.println(F("mandando"));
+
+  //Serial.println(running);
+  uint16_t value = 1;
+  modbus.writeSingleHoldingRegister(01, 8192, value);
+    //Serial.println(F("ENCENDIDO"));
+  
+   //else processError();
+  running = HIGH;
+  enc_act = HIGH;
+  onoff = "ON";
+  //Serial.println(F("ENCENDIDO"));
+}
+//**************************
+void stop() {
+  //Serial.println(F("parando..."));
+
+  //Serial.println(running);
+  uint16_t value = 7;
+  modbus.writeSingleHoldingRegister(01, 8192, value);
+    // else processError();
+ /* running = LOW;
+  onoff = "OFF";
+}
+//*************************
+void envio(uint16_t value) {
+  //uint16_t vall = value;
+  
+  modbus.writeSingleHoldingRegister(01, 8193, value);
+    //valor_in = value;
+  
+  //else processError();
+}
+//*****lectura variador
+void frec_var() {
+  uint16_t value = 0;
+  //long val_1;
+  //float val;
+  if (modbus.readHoldingRegisters(01, 8451, &value, 1)) {
+      variador_frec=value;
+  }
+  //else //processError();
+  //return val;
+  
+}*///**************************
