@@ -84,7 +84,11 @@ void setup() {
       ;*/
   }
     ini_sd();
-
+//********reset slave en caso de reset arduino*********
+  Wire.beginTransmission(0x20);
+  Wire.write('R');
+  Wire.endTransmission();
+//********
   //ETCG Notes - Start LCD
   lcd_1.init();
   lcd_1.backlight();
