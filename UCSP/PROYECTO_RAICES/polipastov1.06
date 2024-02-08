@@ -1,16 +1,16 @@
-#include <ModbusRTUMaster.h>
-#include <SoftwareSerial.h>
+//#include <ModbusRTUMaster.h>
+//#include <SoftwareSerial.h>
 #include <SPI.h>
 #include <SD.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #define alpha 0.2  //Alpha
 #define pi 3.1416
-#define rxPin 8
-#define txPin 9
-#define dePin 7
-#define btn_1 2
-#define btn_2 3
+//#define rxPin 8
+//#define txPin 9
+//#define dePin 7
+#define btn_1 3
+#define btn_2 2
 const int sensorPin= A0;
 int frecc[10] = { 0, 598, 665, 733, 800, 868, 935, 1003, 1070, 1138};//,1205, 1273 };
 int con_fre = 0;
@@ -35,8 +35,8 @@ int temp_act = 0;
 int T_DL=0;
 char  nodepayload[4];
 char  nodepayload2[4];
-SoftwareSerial puerta(rxPin, txPin);
-ModbusRTUMaster modbus(puerta, dePin);
+//SoftwareSerial puerta(rxPin, txPin);
+
 LiquidCrystal_I2C lcd_1(0x27, 20, 4);
 float valor_galga = 0;
 float vel = 0;
@@ -44,50 +44,7 @@ float rpm = 0;
 File my_File;
 String onoff = "OFF";
 int variador_frec=0;
-
-void star() {
-  //Serial.println(F("mandando"));
-
-  //Serial.println(running);
-  uint16_t value = 1;
-  if (modbus.writeSingleHoldingRegister(01, 8192, value)) {
-    //Serial.println(F("ENCENDIDO"));
-  
-  }  //else processError();
-  running = HIGH;
-  enc_act = HIGH;
-  onoff = "ON";
-}
-void stop() {
-  //Serial.println(F("parando..."));
-
-  //Serial.println(running);
-  uint16_t value = 7;
-  if (modbus.writeSingleHoldingRegister(01, 8192, value)) {
-  }  // else processError();
-  running = LOW;
-  onoff = "OFF";
-}
-void envio(uint16_t value) {
-  //uint16_t vall = value;
-  
-  if (modbus.writeSingleHoldingRegister(01, 8193, value)) {
-    //valor_in = value;
-  }
-  //else processError();
-}
-/*/*****lectura variador
-void frec_var() {
-  uint16_t value = 0;
-  //long val_1;
-  //float val;
-  if (modbus.readHoldingRegisters(01, 8451, &value, 1)) {
-      variador_frec=value;
-  }
-  //else //processError();
-  //return val;
-  
-}*///**************************
+//**************************
 void ini_sd() {
 
   Serial.println("SD inicializada.");
@@ -108,11 +65,12 @@ void setup() {
   pinMode(btn_1, INPUT_PULLUP);
   pinMode(btn_2, INPUT_PULLUP);
   Serial.begin(9600);
-  Serial.setTimeout(100);
-  while (!Serial) { ; }
+  //Serial.setTimeout(100);
+  //while (!Serial) { ; }
   // library data rs 485 and modbus vdf
-  modbus.begin(9600);  // modbus baud rate, config (optional)
+  //modbus.begin(9600);  // modbus baud rate, config (optional)
   //read_actual();
+  
   if (!SD.begin(10)) {
     //Serial.println("initialization failed!");
     lcd_1.init();
@@ -144,15 +102,16 @@ void setup() {
 void loop() {
   
     calculate();
-    display();
-    //************** Time--1seg ***************
+
+//************** Time--1seg ***************
 unsigned long peri_act=millis();
 if(peri_act - perante >= periodo){
 // frec_var();
-  
+
+
   if (running == HIGH){//valor_galga > 1 && running == HIGH) {
+    encoder_trans();
     sd_card();
-    
     cont = cont + 1;
     if (valor_galga > 1 && toma==HIGH){
     temp_act=cont;
@@ -168,27 +127,33 @@ if(peri_act - perante >= periodo){
 */
     } else {cont = 0;}
   perante=peri_act;
+  display();
+  
+
 }
 //****************COMUNICACION I2C****************
-if (enc_act == HIGH){
-Wire.beginTransmission(0x20);
-Wire.write('S');
-Wire.endTransmission();
-enc_act = LOW;
-}
-    encoder_trans();
 
-  //*****************
-  if (Serial.available()) {
+//*****************serial***********
+  while (Serial.available()>0) {
     caracter = Serial.read();
     switch (caracter) {
       case 'A':  //star
-        //running = false;
-        star();
+       
+      Wire.beginTransmission(0x20);
+      Wire.write('A');
+      Wire.endTransmission();
+  running = HIGH;  
+  enc_act = HIGH;
+  onoff = "ON";
         break;
       case 'B':  //stop
         //running = false;
-        stop();
+      //  stop();
+Wire.beginTransmission(0x20);
+Wire.write('B');
+Wire.endTransmission();
+ running = LOW;
+  onoff = "OFF";
         break;
       case 'C':
         lectura();
@@ -203,16 +168,27 @@ enc_act = LOW;
       case '+':
         con_fre=con_fre+1;
         if(con_fre>9) con_fre=0;
-        envio((uint16_t)frecc[con_fre]);
+        /*String valto1="+";
+        valto1.concat(con_fre);*/
+        Wire.beginTransmission(0x20);
+        Wire.write('+');
+        Wire.endTransmission();
+       
         break;
       case '-':
         con_fre=con_fre-1;
         if(con_fre<0) con_fre=9;
-        envio((uint16_t)frecc[con_fre]);
+        /*String valto2="-";
+        valto2.concat(con_fre);*/
+        Wire.beginTransmission(0x20);
+        Wire.write('-');
+        Wire.endTransmission();
+       
         break;
     }
   }
 
+//************boton mas y star***********
   estado_1 = digitalRead(btn_1);
   if (estado_1 != pulsado_1) {
     if (estado_1 == LOW && pulsado_1 == HIGH) {
@@ -225,18 +201,26 @@ enc_act = LOW;
       pulsado_1 = estado_1;
       delay(30);
       if (fin_1 > 2000) {
-        star();
+       // star();
+      Wire.beginTransmission(0x20);
+      Wire.write('A');
+      Wire.endTransmission();
+      running = HIGH;  
+  enc_act = HIGH;
+  onoff = "ON";
       }
       if (fin_1 > 60 && fin_1 < 500) { 
         con_fre=con_fre+1;
         if(con_fre>9) con_fre=0;
-        envio((uint16_t)frecc[con_fre]);
+       // envio((uint16_t)frecc[con_fre]);
+       Wire.beginTransmission(0x20);
+      Wire.write('+');
+      Wire.endTransmission();
       }
       pulsado_1 = estado_1;
     }
   }
-
-  //boton menos y stop
+//************boton menos y stop***********
   estado_2 = digitalRead(btn_2);
   if (estado_2 != pulsado_2) {
     //cont=0;
@@ -250,19 +234,28 @@ enc_act = LOW;
       fin_2 = millis() - ini_2;
       delay(30);
       if (fin_2 > 2000) {
-        stop();
+       // stop();
+      Wire.beginTransmission(0x20);
+      Wire.write('B');
+      Wire.endTransmission();
+      running = LOW;
+  onoff = "OFF";
       }
       if (fin_2 > 60 && fin_2 < 500) {
         con_fre=con_fre-1;
         if(con_fre<0) con_fre=9;
-        envio((uint16_t)frecc[con_fre]);
+      //  envio((uint16_t)frecc[con_fre]);
+      Wire.beginTransmission(0x20);
+      Wire.write('-');
+      Wire.endTransmission();
       }
       pulsado_2 = estado_2;
     }
   }
-
-
+//*****
+//Serial.flush();
 }
+//****
 //*********************************
 float getfloat(byte pack[], byte i){
   union u_tag{
@@ -277,6 +270,12 @@ float getfloat(byte pack[], byte i){
 }
 //************************************
 void encoder_trans(){
+/*  if (enc_act == HIGH){
+Wire.beginTransmission(0x20);
+Wire.write('S');
+Wire.endTransmission();
+enc_act = LOW;
+}*/
 Wire.beginTransmission(0x20);
 Wire.write('V');
 Wire.endTransmission();
@@ -287,9 +286,9 @@ if(Wire.available()){
    //for (int z=0; z<4; z++) Serial.print(nodepayload[z],HEX);
 }
 vel=getfloat(nodepayload,0);
-
+Wire.endTransmission();
 Wire.beginTransmission(0x20);
-Wire.write('D');
+Wire.write('H');
 Wire.endTransmission();
 Wire.requestFrom(0x20,4);
 if(Wire.available()){
@@ -321,6 +320,7 @@ void display() {
   lcd_1.setCursor(13, 1);
   lcd_1.print(onoff);
   //while (millis() % 250 != 0) {}
+  
 }
 void calculate() {
   //velocidad en mm/s
@@ -340,7 +340,7 @@ void calculate() {
   }
   vel=*/
   //peso
-  vel = vel ;//* pi * 76 / 60;
+  vel = vel;// * pi * 76 / 60;
   adc_raw = analogRead(sensorPin);
   adc_filtrado = (alpha * adc_raw) + ((1 - alpha) * adc_filtrado);
   valor_galga = (500 * adc_filtrado) / 1023;
@@ -366,7 +366,7 @@ if (SD.begin()) {
 }}
 void borrado() {
   //Serial.println("Removiendo data.csv...");
- if (SD.begin()) {
+ if (SD.begin(10)) {
   SD.remove("data.txt");
   ini_sd();
  }
